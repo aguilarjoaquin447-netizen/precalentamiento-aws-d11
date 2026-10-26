@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Precalentamiento AWS D1.1</title>
+  <script>
+    // Aplica el tema guardado antes de pintar para evitar un destello del tema contrario.
+    try {
+      var tema = localStorage.getItem('aws-d11-tema');
+      if (tema === 'light' || tema === 'dark') document.documentElement.dataset.theme = tema;
+    } catch (e) { /* almacenamiento no disponible: se sigue el tema del sistema */ }
+  </script>
+  <link rel="stylesheet" href="estilos.css">
+  <script src="datos.js" defer></script>
+  <script src="calculo.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="cabecera">
+    <div class="cabecera__interior">
+      <div>
+        <p class="cabecera__norma">AWS D1.1/D1.1M:2020 · Apéndice B</p>
+        <h1>Temperatura de precalentamiento</h1>
+        <p class="cabecera__sub">Método de control de hidrógeno: Pcm → nivel de hidrógeno → Tabla B.1 → Tabla B.2</p>
+      </div>
+      <div class="cabecera__acciones">
+        <button type="button" id="imprimir" class="boton boton--discreto">Imprimir</button>
+        <button type="button" id="tema" class="boton boton--discreto" aria-pressed="false">Tema oscuro</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="disposicion">
+    <form id="formulario" class="formulario" novalidate>
+      <div class="ejemplos">
+        <label for="ejemplo">Cargar un ejemplo del curso</label>
+        <select id="ejemplo" class="control">
+          <option value="">— Elegir —</option>
+        </select>
+        <p id="nota-ejemplo" class="nota nota--ejemplo" hidden></p>
+      </div>
+
+      <section class="paso-form" aria-labelledby="f1">
+        <h2 id="f1"><span class="num">1</span>Sistema de medida</h2>
+        <div class="segmentado" role="radiogroup" aria-labelledby="f1">
+          <label><input type="radio" name="unidad" value="mm" checked><span>Milímetros (mm) → tabla en °C</span></label>
+          <label><input type="radio" name="unidad" value="in"><span>Pulgadas (pulg) → tabla en °F</span></label>
+        </div>
+        <p class="nota">Las tablas en mm/°C y en pulg/°F no son conversiones exactas: cada sistema se usa por separado (AWS 1.2).</p>
+      </section>
+
+      <section class="paso-form" aria-labelledby="f2">
+        <h2 id="f2"><span class="num">2</span>Composición química del acero <span class="unidad">% en masa</span></h2>
+        <div id="composicion" class="composicion"></div>
+        <p id="err-composicion" class="campo-error" hidden></p>
+        <p class="nota">El carbono es obligatorio. Un campo vacío se toma como 0 % y se indica en el resultado. Puede usar el certificado de la acería o los máximos de la especificación (B6.1.1).</p>
+      </section>
+
+      <section class="paso-form" aria-labelledby="f3">
+        <h2 id="f3"><span class="num">3</span>Material de aporte y nivel de hidrógeno</h2>
+        <label for="consumible" class="etiqueta">Consumible (base de datos: 2 SMAW + 2 GMAW)</label>
+        <select id="consumible" class="control"></select>
+        <div id="ficha-consumible" class="ficha" hidden></div>
+        <div id="condicion" class="opciones" role="radiogroup" aria-label="Condición de uso del consumible" hidden></div>
+        <div id="hidrogeno" class="opciones" role="radiogroup" aria-labelledby="f3"></div>
+      </section>
+
+      <section class="paso-form" aria-labelledby="f4">
+        <h2 id="f4"><span class="num">4</span>Espesor del material base</h2>
+        <label for="espesor" class="etiqueta">Espesor de la parte más gruesa soldada</label>
+        <div class="con-unidad">
+          <input id="espesor" class="control" inputmode="decimal" autocomplete="off" placeholder="p. ej. 25" aria-describedby="err-espesor ayuda-espesor">
+          <span id="unidad-espesor" class="con-unidad__sufijo">mm</span>
+        </div>
+        <p id="err-espesor" class="campo-error" hidden></p>
+        <p id="ayuda-espesor" class="nota">Tabla B.2, nota b. En pulgadas se aceptan fracciones: 3/4, 1-1/2.</p>
+      </section>
+
+      <section class="paso-form" aria-labelledby="f5">
+        <h2 id="f5"><span class="num">5</span>Nivel de restricción de la junta</h2>
+        <div id="restriccion" class="opciones" role="radiogroup" aria-labelledby="f5"></div>
+        <p class="nota">Se determina según la experiencia, el análisis de ingeniería, la investigación o el cálculo (B6.2.5).</p>
+      </section>
+
+      <section class="paso-form" aria-labelledby="f6">
+        <h2 id="f6"><span class="num">6</span>Tipo de soldadura <span class="unidad">opcional</span></h2>
+        <div class="segmentado" role="radiogroup" aria-labelledby="f6">
+          <label><input type="radio" name="tipo" value="" checked><span>Sin indicar</span></label>
+          <label><input type="radio" name="tipo" value="ranura"><span>Ranura</span></label>
+          <label><input type="radio" name="tipo" value="filete"><span>Filete</span></label>
+        </div>
+        <p class="nota">Solo cambia la recomendación para aceros de la Zona II (B5.2).</p>
+      </section>
+
+      <div class="acciones">
+        <button type="submit" class="boton boton--primario">Calcular</button>
+        <button type="button" id="limpiar" class="boton">Limpiar</button>
+      </div>
+    </form>
+
+    <section id="resultados" class="resultados" aria-labelledby="t-resultados" tabindex="-1">
+      <h2 id="t-resultados" class="solo-lector">Resultados</h2>
+      <div id="salida" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <p>Herramienta de apoyo académico. No sustituye la calificación del procedimiento de soldadura (WPS/PQR), la revisión de un ingeniero
+      competente ni los requisitos contractuales. Fuente: AWS D1.1/D1.1M:2020 (es), «AWS D1.1 2020 Español.pdf»; las páginas citadas son las impresas.</p>
+  </footer>
+</body>
+</html>
